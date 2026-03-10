@@ -1,0 +1,45 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: calanques_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: calanques
+      MYSQL_USER: calanques_user
+      MYSQL_PASSWORD: calanques_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: calanques_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: calanques_db
+      DB_PORT: 3306
+      DB_NAME: calanques
+      DB_USER: calanques_user
+      DB_PASSWORD: calanques_pass
+      JWT_SECRET: super_secret_jwt_key
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
